@@ -1,0 +1,18 @@
+/*
+ * Chat V2 compatibility aliases.
+ * All palette values come from ../ui/tokens.css and ../ui/theme.css.
+ */
+:root {
+  --rb-accent: var(--rb-pink-400);
+  --rb-divider: var(--rb-border-soft);
+  --rb-divider-soft: var(--rb-border-faint);
+  --rb-glass-bg: rgba(255, 255, 255, 0.07);
+  --rb-glass-bg-hover: rgba(255, 255, 255, 0.12);
+  --rb-danger: var(--rb-pink-400);
+  --rb-danger-hover: var(--rb-pink-500);
+}
+
+[data-ui-theme="pearl-white"] {
+  --rb-glass-bg: rgba(255, 255, 255, 0.72);
+  --rb-glass-bg-hover: var(--rb-pink-50);
+}

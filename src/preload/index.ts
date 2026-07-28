@@ -125,6 +125,14 @@ const systemApi = {
 
 contextBridge.exposeInMainWorld("system", systemApi);
 
+// V2 窗口控制（无边框窗口的最小化/最大化/关闭）
+const cyreneV2Api = {
+  minimize: () => ipcRenderer.invoke(IPC.V2_WINDOW_MINIMIZE),
+  toggleMax: () => ipcRenderer.invoke(IPC.V2_WINDOW_TOGGLE_MAX),
+  close: () => ipcRenderer.invoke(IPC.V2_WINDOW_CLOSE),
+};
+contextBridge.exposeInMainWorld("cyreneV2", cyreneV2Api);
+
 const schedulerEventsApi = {
   onEvent: (callback: (event: unknown) => void) => {
     const listener = (_e: unknown, event: unknown) => {
@@ -460,6 +468,11 @@ const chatStoreApi = {
     ipcRenderer.invoke(IPC.CHATS_MIGRATE_LEGACY, messages),
   openInChatWindow: (sessionId: string) =>
     ipcRenderer.invoke(IPC.CHATS_OPEN_IN_CHAT_WINDOW, sessionId),
+  openV2Preview: () =>
+    ipcRenderer.invoke(IPC.CHATS_OPEN_V2_PREVIEW),
+  v2WindowMinimize: () => ipcRenderer.invoke(IPC.V2_WINDOW_MINIMIZE),
+  v2WindowToggleMax: () => ipcRenderer.invoke(IPC.V2_WINDOW_TOGGLE_MAX),
+  v2WindowClose: () => ipcRenderer.invoke(IPC.V2_WINDOW_CLOSE),
   // 聊天窗口加载 / 切换 session 时上报；其他窗口可查询/订阅
   setActiveSession: (sessionId: string | null) =>
     ipcRenderer.invoke(IPC.CHATS_SET_ACTIVE_SESSION, sessionId),

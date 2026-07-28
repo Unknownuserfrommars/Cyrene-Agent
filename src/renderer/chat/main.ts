@@ -4705,3 +4705,11 @@ window.chatStore?.onChanged(async () => {
 });
 autosize();
 inputEl.focus();
+
+// 开发快捷键：Ctrl+Shift+V 打开 V2 React 预览窗口
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key === "V") {
+    e.preventDefault();
+    window.chatStore?.openV2Preview?.();
+  }
+});

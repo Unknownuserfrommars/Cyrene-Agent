@@ -104,6 +104,12 @@ export const IPC = {
   CHATS_OPEN_IN_CHAT_WINDOW: "chats:open-in-chat-window",
   // main → 聊天窗口：要求切到指定 sessionId（窗口已存在时用）
   CHATS_SWITCH_SESSION: "chats:switch-session",
+  // 开发用：打开 V2 React 预览窗口（不接 AG-UI，纯 UI 预览）
+  CHATS_OPEN_V2_PREVIEW: "chats:open-v2-preview",
+  // V2 窗口控制（无边框窗口用）
+  V2_WINDOW_MINIMIZE: "v2:window-minimize",
+  V2_WINDOW_TOGGLE_MAX: "v2:window-toggle-max",
+  V2_WINDOW_CLOSE: "v2:window-close",
   // 聊天窗口 → main：声明当前活跃 sessionId（用于设置面板"删除当前会话"时差异化提示）
   CHATS_SET_ACTIVE_SESSION: "chats:set-active-session",
   // renderer → main: 查询当前活跃 sessionId（设置面板初次打开时用）

@@ -219,6 +219,7 @@ async function reconcileUserMemoryIndex(): Promise<void> {
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let chatWindow: BrowserWindow | null = null;
+let chatV2PreviewWindow: BrowserWindow | null = null;
 let sidebarWindow: BrowserWindow | null = null;
 let tasksWindow: BrowserWindow | null = null;
 let settingsWindow: BrowserWindow | null = null;
@@ -646,6 +647,8 @@ interface GeneralSettings {
   currentStyleId: StyleId;
   /** 全局自定义风格采样配置。 */
   customStyle: CustomStyleConfig;
+  /** 聊天渲染模式：legacy=原生TS V1，react=React V2。 */
+  chatRendererMode: "legacy" | "react";
   /** 聊天气泡分段输出偏好。 */
   segmentedOutputMode: SegmentedOutputMode;
   /** 手机渠道文本消息分段发送偏好。 */
@@ -885,6 +888,7 @@ const DEFAULT_GENERAL_SETTINGS: GeneralSettings = {
   defaultChatMode: "work",
   currentStyleId: "default",
   customStyle: DEFAULT_CUSTOM_STYLE,
+  chatRendererMode: "legacy",
   segmentedOutputMode: "off",
   mobileMessageSegmentation: "off",
   proactiveChatMode: "off",
@@ -1336,6 +1340,7 @@ function normalizeGeneralSettings(input: Partial<GeneralSettings> | null | undef
     defaultChatMode: normalizeDefaultChatMode(input?.defaultChatMode),
     currentStyleId: normalizeStyleId(input?.currentStyleId),
     customStyle: normalizeCustomStyleConfig(input?.customStyle),
+    chatRendererMode: input?.chatRendererMode === "react" ? "react" : "legacy",
     segmentedOutputMode: normalizeSegmentedOutputMode(input?.segmentedOutputMode),
     mobileMessageSegmentation: normalizeMobileMessageSegmentationMode(input?.mobileMessageSegmentation),
     proactiveChatMode: normalizeProactiveChatMode(input?.proactiveChatMode),
@@ -2970,11 +2975,13 @@ function createChatWindow(sessionId?: string): void {
   // 通过 URL query 把目标 sessionId 带给渲染进程（首次加载用），
   // 后续切换走 CHATS_SWITCH_SESSION 事件，避免重新加载页面。
   const queryString = sessionId ? "?sessionId=" + encodeURIComponent(sessionId) : "";
+  const rendererMode = loadGeneralSettings().chatRendererMode ?? "legacy";
+  const chatEntry = rendererMode === "react" ? "chat-react" : "chat";
   if (isDev) {
-    chatWindow.loadURL("http://localhost:5173/chat/" + queryString);
+    chatWindow.loadURL(`http://localhost:5173/${chatEntry}/${queryString}`);
   } else {
     chatWindow.loadFile(
-      path.join(__dirname, "..", "..", "renderer", "chat", "index.html"),
+      path.join(__dirname, "..", "..", "renderer", chatEntry, "index.html"),
       sessionId ? { search: queryString } : undefined,
     );
   }
@@ -5176,6 +5183,65 @@ app.whenReady().then(async () => {
 
   ipcMain.handle(IPC.CHATS_OPEN_IN_CHAT_WINDOW, (_event, sessionId: string) => {
     createChatWindow(sessionId);
+    return true;
+  });
+
+  // 开发用：打开 V2 React 预览窗口（不接 AG-UI，纯 UI 预览）
+  ipcMain.handle(IPC.CHATS_OPEN_V2_PREVIEW, () => {
+    if (chatV2PreviewWindow && !chatV2PreviewWindow.isDestroyed()) {
+      chatV2PreviewWindow.focus();
+      return true;
+    }
+    // 按屏幕分辨率自适应：宽 60%、高 80%，最小 960×640，最大不超 workArea
+    const display = screen.getPrimaryDisplay();
+    const { width: dw, height: dh } = display.workAreaSize;
+    const v2Width = Math.max(960, Math.min(Math.round(dw * 0.6), 1440));
+    const v2Height = Math.max(640, Math.min(Math.round(dh * 0.8), 900));
+    // 放在主显示器右侧
+    const x = display.workArea.x + Math.round((display.workArea.width - v2Width) / 2);
+    const y = display.workArea.y + Math.round((display.workArea.height - v2Height) / 2);
+    chatV2PreviewWindow = new BrowserWindow({
+      x, y,
+      width: v2Width,
+      height: v2Height,
+      minWidth: 960,
+      minHeight: 640,
+      title: "Cyrene · Chat V2 Preview",
+      backgroundColor: "#00000000",
+      autoHideMenuBar: true,
+      show: false,
+      frame: false,
+      transparent: true,
+      resizable: true,
+      webPreferences: {
+        preload: path.join(__dirname, "..", "..", "preload", "preload", "index.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+      },
+    });
+    if (isDev) {
+      chatV2PreviewWindow.loadURL("http://localhost:5173/chat-react/");
+    } else {
+      chatV2PreviewWindow.loadFile(
+        path.join(__dirname, "..", "..", "renderer", "chat-react", "index.html"),
+      );
+    }
+    chatV2PreviewWindow.once("ready-to-show", () => chatV2PreviewWindow?.show());
+    chatV2PreviewWindow.on("closed", () => { chatV2PreviewWindow = null; });
+
+    // V2 窗口控制 IPC（标题栏按钮用）
+    ipcMain.handle(IPC.V2_WINDOW_MINIMIZE, () => {
+      chatV2PreviewWindow?.minimize();
+    });
+    ipcMain.handle(IPC.V2_WINDOW_TOGGLE_MAX, () => {
+      if (!chatV2PreviewWindow) return;
+      if (chatV2PreviewWindow.isMaximized()) chatV2PreviewWindow.unmaximize();
+      else chatV2PreviewWindow.maximize();
+    });
+    ipcMain.handle(IPC.V2_WINDOW_CLOSE, () => {
+      chatV2PreviewWindow?.close();
+    });
     return true;
   });
   // 聊天窗口启动/切换会话时上报当前活跃 sessionId；main 广播给所有窗口
