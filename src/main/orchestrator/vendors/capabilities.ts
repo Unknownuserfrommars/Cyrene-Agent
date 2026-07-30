@@ -128,6 +128,26 @@ export const PROVIDER_CAPABILITIES = [
     supportsVision: true,
   },
   {
+    id: "claude-code",
+    displayName: "Claude Code（订阅）",
+    // baseUrl 是占位：真实端口由 claude-code-bridge 启动时随机分配，
+    // 用户从启动日志里把 baseUrl + token 抄进设置。
+    transport: "anthropic",
+    baseUrl: "http://127.0.0.1:0/v1",
+    // 桥接受 x-api-key 和 Bearer 两种；跟 claude 保持一致用 x-api-key。
+    authStyle: "x-api-key",
+    defaultModel: "claude-sonnet-4-6",
+    // 只支持 Chat：Work 模式的 tools 会被桥以 400 拦掉（见 claude-code-bridge.ts 文件头）。
+    // 注意 supportsTools 全仓库没有读取点，这里标 false 只是声明意图，拦截靠桥本身。
+    supportsTools: false,
+    supportsThinking: false,
+    thinkingField: null,
+    cacheStrategy: "none",
+    testStrategy: "text",
+    // Agent SDK 的 prompt 是纯文本，图片走不过去。
+    supportsVision: false,
+  },
+  {
     id: "mimo",
     displayName: "MiMo（小米）",
     // 默认入口：用户切 /anthropic 时由 detectTransport 自动推断

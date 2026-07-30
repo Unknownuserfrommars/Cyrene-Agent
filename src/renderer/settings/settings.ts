@@ -606,6 +606,17 @@ const MODEL_PRESETS: ModelPreset[] = [
     websiteUrl: "https://console.anthropic.com/",
   },
   {
+    // 用 Claude 订阅（Pro/Max）驱动 Chat，不用 API Key。
+    // Base URL 和 API Key 都要从启动日志里的 [ClaudeCodeBridge] 那行抄过来——
+    // 端口每次启动随机，token 也是。仅 Chat 模式可用，Work 模式会被明确拒绝。
+    providerName: "Claude Code（订阅）",
+    shortName: "Claude Code",
+    baseUrl: "http://127.0.0.1:0/v1",
+    mainModels: ["claude-sonnet-4-6", "claude-opus-4-8"],
+    iconUrl: "../icons/providers/claude.svg",
+    websiteUrl: "https://platform.claude.com/docs/en/agent-sdk/overview",
+  },
+  {
     providerName: "MiMo（小米）",
     shortName: "MiMo",
     baseUrl: "https://api.xiaomimimo.com/v1",

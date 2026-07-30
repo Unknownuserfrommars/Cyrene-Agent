@@ -160,6 +160,7 @@ import {
 } from "./skills/music-companion-host";
 import { initGameBot } from "./game-bot";
 import { initChannels, shutdownChannels, setChannelsConversationLifecycle } from "./channels/init";
+import { startClaudeCodeBridge, type ClaudeCodeBridgeHandle } from "./orchestrator/vendors/claude-code-bridge";
 import { buildChannelAttachmentInputs } from "./channels/agent-input";
 import { setDispatcherBuildAndRunAgent, setDispatcherSynthesizeTts, setDispatcherBroadcastChat, setDispatcherLoadGeneralSettings, setDispatcherLoadRecentHistory } from "./channels/dispatcher";
 import { createWindowLifecycleTracker } from "./electron-window-lifecycle";
@@ -227,6 +228,8 @@ let callWindow: BrowserWindow | null = null;
 let schedulerEngine: SchedulerEngine | null = null;
 let screenshotService: ScreenshotService | null = null;
 let proactiveChatService: ProactiveChatService | null = null;
+/** Claude Code 桥的句柄；退出时要关掉监听。 */
+let claudeCodeBridge: ClaudeCodeBridgeHandle | null = null;
 let normalConversationBusyCount = 0;
 let proactiveScreenLocked = false;
 const live2dWindowLifecycle = createWindowLifecycleTracker<BrowserWindow>("live2d-main", {
@@ -4913,6 +4916,24 @@ app.whenReady().then(async () => {
 
   void initChannels();
 
+  // Claude Code 桥：用 Claude 订阅（Pro/Max）驱动 Chat 模式，不需要 API Key。
+  // 端口和 token 每次启动随机，所以只能靠日志把它们交给用户去填设置——
+  // 写死端口会跟用户机器上别的服务撞，固定 token 等于没有 token。
+  void startClaudeCodeBridge()
+    .then(bridge => {
+      claudeCodeBridge = bridge;
+      console.log(
+        `[ClaudeCodeBridge] 已启动。设置 → 模型设置里选「Claude Code（订阅）」，然后填：\n` +
+          `  Base URL: ${bridge.baseUrl}\n` +
+          `  API Key : ${bridge.token}\n` +
+          `  仅 Chat 模式可用；Work 模式请用配 API Key 的「Claude（Anthropic）」。`,
+      );
+    })
+    .catch(err => {
+      // 桥起不来不该拖垮整个 app——其它厂商照样能用。
+      console.warn("[ClaudeCodeBridge] 启动失败（其它厂商不受影响）:", err);
+    });
+
   // 任务清单（todo_write 工具的持久化 + 事件广播）：
   // - loadTodos 从磁盘恢复上次未完成的任务（跨重启延续）
   // - onTodosChange 订阅变化，把 TodoState 作为 CUSTOM 事件转发给所有聊天窗口
@@ -5234,6 +5255,7 @@ app.on("before-quit", () => {
   flushTokenUsage();
   void shutdownChannels();
   void screenshotService?.shutdown();
+  void claudeCodeBridge?.close();
 });
 
 app.on("activate", () => {
