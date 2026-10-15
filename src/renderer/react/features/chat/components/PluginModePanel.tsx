@@ -360,7 +360,9 @@ export function PluginModePanel({ api: providedApi }: PluginModePanelProps) {
             type="button"
             className="plugin-panel__icon-button"
             onClick={() => void refreshPlugins()}
-            disabled={!api || headerAction !== null}
+            // 市场列表加载中时禁用（与数据源 chip 一致）：加载期间 market.sources 被清空，
+            // 此时刷新会以默认源重新拉取，覆盖用户刚选的数据源
+            disabled={!api || headerAction !== null || (inMarket && market.phase === "loading")}
             aria-label={t("pluginPanel.refresh")}
             title={t("pluginPanel.refresh")}
           >

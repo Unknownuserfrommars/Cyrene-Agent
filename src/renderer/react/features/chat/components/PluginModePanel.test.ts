@@ -371,6 +371,41 @@ describe("PluginModePanel", () => {
     expect(container.textContent).toContain("30 次下载");
   });
 
+  it("切换数据源的加载未完成时刷新按钮禁用，不会用默认源覆盖用户选择", async () => {
+    const gitee = "https://gitee.com/playa0/cyrene-plugins/raw/main/registry.json";
+    const github = "https://raw.githubusercontent.com/Playa-0v0/Cyrene-Plugins/main/registry.json";
+    const api = apiFor([]);
+    const marketList = api.marketList as ReturnType<typeof vi.fn>;
+    marketList.mockResolvedValueOnce({
+      ok: true,
+      plugins: [marketEntry()],
+      sources: [{ url: github, ok: true, used: true }, { url: gitee, ok: true, used: false }],
+    });
+    await renderPanel(api);
+    await clickMarketToggle();
+
+    // 用户切到 Gitee，这次拉取先挂起
+    let finishGitee!: (value: unknown) => void;
+    marketList.mockImplementationOnce(() => new Promise((resolve) => { finishGitee = resolve; }));
+    const giteeChip = [...container.querySelectorAll<HTMLButtonElement>(".plugin-panel__source-chip")]
+      .find((chip) => chip.textContent === "Gitee");
+    await act(async () => giteeChip?.click());
+
+    const refresh = () => container.querySelector<HTMLButtonElement>('button[aria-label="刷新插件"]');
+    expect(refresh()?.disabled).toBe(true);
+
+    await act(async () => finishGitee({
+      ok: true,
+      plugins: [marketEntry()],
+      sources: [{ url: github, ok: true, used: false }, { url: gitee, ok: true, used: true }],
+    }));
+    expect(refresh()?.disabled).toBe(false);
+
+    // 加载完成后刷新沿用 Gitee，而不是退回默认源
+    await act(async () => refresh()?.click());
+    expect(marketList).toHaveBeenLastCalledWith(gitee);
+  });
+
   it("插件视图里点刷新只重扫本地插件，不拉取市场列表", async () => {
     const api = apiFor([plugin()]);
     await renderPanel(api);
